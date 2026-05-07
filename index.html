@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="description" content="Personal productivity desk dashboard with notes, timers, and reminders">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="DeskBoard">
+    <title>DeskBoard — Personal Productivity Space</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%233b82f6' width='100' height='100' rx='20'/><text x='50%' y='50%' font-size='60' text-anchor='middle' dy='.35em'>📌</text></svg>">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --cork-base: #c4a882;
+            --cork-dark: #8b7355;
+            --frame-color: #5c4033;
+            --frame-light: #8b6f5c;
+            --frame-dark: #3d2b1f;
+            --pin-red: #dc2626;
+            --pin-blue: #2563eb;
+            --pin-green: #16a34a;
+            --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --shadow-lift: 0 12px 40px rgba(0, 0, 0, 0.25);
+            --font-hand: 'Caveat', cursive;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --blink-color: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-body);
+            overflow: hidden;
+            background: #1a1a1a;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        /* ─── Board Container ─── */
+        .board-wrapper {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: radial-gradient(ellipse at center, #2a2a2a 0%, #111 100%);
+        }
+
+        .corkboard {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 95vw;
+            max-height: 90vh;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(139, 90, 43, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(160, 82, 45, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(139, 90, 43, 0.05) 0%, transparent 40%),
+                linear-gradient(135deg, #c9b08a 0%, #b8a07a 50%, #c4a882 100%);
+            border-radius: 4px;
+            box-shadow:
+                inset 0 0 80px rgba(101, 67, 33, 0.15),
+                0 0 0 12px var(--frame-color),
+                0 0 0 14px var(--frame-dark),
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 16px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .corkboard:active {
+            cursor: grabbing;
+        }
+
+        /* Cork texture overlay */
+        .corkboard::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            mix-blend-mode: multiply;
+        }
+
+        /* Wood grain subtle effect */
+        .corkboard::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            background: repeating-linear-gradient(90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.1) 2px,
+                    rgba(0, 0, 0, 0.1) 4px);
+            pointer-events: none;
+        }
+
+        /* ─── Notes ─── */
+        .note {
+            position: absolute;
+            transition: box-shadow 0.2s ease;
+            cursor: grab;
+            will-change: transform;
+        }
+
+        .note:active {
+            cursor: grabbing;
+        }
+
+        .note.dragging {
+            z-index: 99999 !important;
+            box-shadow: var(--shadow-lift);
+        }
+
+        .note.dragging .note-inner {
+            transform: scale(1.03);
+        }
+
+        .note.blinking {
+            animation: urgentBlink 0.8s ease-in-out infinite;
+            z-index: 99998 !important;
+        }
+
+        .note.blinking .note-inner {
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), 0 0 60px rgba(239, 68, 68, 0.3);
+        }
+
+        @keyframes urgentBlink {
+
+            0%,
+            100% {
+                transform: rotate(var(--rot)) scale(1);
+            }
+
+            50% {
+                transform: rotate(var(--rot)) scale(1.05);
+            }
+        }
+
+        .note-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.15s ease, box-shadow 0.3s ease;
+            border-radius: 2px;
+        }
+
+        /* Paper texture */
+        .note-paper {
+            position: absolute;
+            inset: 0;
+            border-radius: 2px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .note-paper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, transparent 50%, rgba(0, 0, 0, 0.02) 100%);
+            pointer-events: none;
+        }
+
+        .note-paper::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.3;
+            background-image: radial-gradient(circle, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        /* Sticky note specific */
+        .note-type-sticky .note-paper {
+            box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Paper sheet specific */
+        .note-type-paper .note-paper {
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
+        }
+
+        .note-type-paper .note-paper::before {
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 0%, transparent 10%);
+        }
+
+        /* Photo note specific */
+        .note-type-photo .note-paper {
+            background: #f5f5f0 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 8px #f5f5f0, 0 0 0 9px #e0e0d8;
+        }
+
+        .note-type-photo .note-paper::before,
+        .note-type-photo .note-paper::after {
+            display: none;
+        }
+
+        /* Timer note specific */
+        .note-type-timer {
+            width: 260px !important;
+            height: 320px !important;
+        }
+
+        .note-type-timer .note-paper {
+            background: #fafaf9 !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        }
+
+        .note-type-timer .note-paper::before {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, transparent 100%);
+        }
+
+        /* Reminder note specific */
+        .note-type-reminder {
+            width: 240px !important;
+            min-height: 180px !important;
+            height: auto !important;
+        }
+
+        .note-type-reminder .note-paper {
+            background: #fef3c7 !important;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.12), inset 0 0 20px rgba(0, 0, 0, 0.02);
+        }
+
+        .note-type-reminder.blinking .note-paper {
+            background: #fee2e2 !important;
+        }
+
+        .note-type-reminder.blinking .note-content {
+            color: #991b1b;
+        }
+
+        .reminder-config {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            height: 100%;
+            padding: 12px 16px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .reminder-config label {
+            display: block;
+            margin-bottom: 4px;
+            color: #666;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .reminder-config input,
+        .reminder-config select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+
+        .reminder-config input:focus,
+        .reminder-config select:focus {
+            border-color: #3b82f6;
+        }
+
+        .reminder-config button {
+            width: 100%;
+            padding: 8px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .reminder-config button:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+
+        .reminder-config input[type="number"] {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .reminder-config select option[value="custom"] {
+            font-style: italic;
+        }
+
+        .reminder-display {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .note-type-reminder.blinking .reminder-display {
+            cursor: pointer;
+        }
+
+        .reminder-display .reminder-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .reminder-display .reminder-next {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .reminder-display .reminder-ack {
+            width: 100%;
+            padding: 10px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .reminder-display .reminder-ack:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+
+        .reminder-display .reminder-ack:active {
+            transform: scale(0.95);
+        }
+
+        .reminder-interval {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .reminder-icon {
+            font-size: 32px;
+            margin: 12px 0;
+        }
+
+        .reminder-history {
+            font-size: 10px;
+            color: #666;
+            margin-top: 8px;
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+        }
+
+        .reminder-history-header {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .reminder-custom-input {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .reminder-custom-input.visible {
+            display: block;
+        }
+
+        /* Tape for paper notes */
+        .tape {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-1deg);
+            width: 80px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(2px);
+            border-left: 1px solid rgba(255, 255, 255, 0.5);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .tape-photo {
+            width: 60px;
+            height: 18px;
+            top: -8px;
+        }
+
+        .tape-reminder {
+            width: 50px;
+            height: 16px;
+            top: -7px;
+            opacity: 0.6;
+        }
+
+        /* Pin */
+        .pin {
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            z-index: 20;
+            cursor: pointer;
+            box-shadow:
+                inset -2px -2px 4px rgba(0, 0, 0, 0.3),
+                1px 2px 4px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .pin:hover {
+            transform: translateX(-50%) scale(1.2);
+        }
+
+        .pin::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+        }
+
+        .pin-red {
+            background: var(--pin-red);
+        }
+
+        .pin-blue {
+            background: var(--pin-blue);
+        }
+
+        .pin-green {
+            background: var(--pin-green);
+        }
+
+        .pin-orange {
+            background: #f59e0b;
+        }
+
+        .pin-purple {
+            background: #8b5cf6;
+        }
+
+        /* Note content */
+        .note-content {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            font-family: var(--font-hand);
+            font-size: 20px;
+            line-height: 1.4;
+            color: #2d2d2d;
+            overflow: hidden;
+            outline: none;
+        }
+
+        .note-content:focus {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .note-type-checklist .note-content {
+            font-family: var(--font-body);
+            font-size: 14px;
+        }
+
+        /* Photo styling */
+        .note-photo-wrapper {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .note-photo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: block;
+        }
+
+        /* Timer Widget Styles */
+        .timer-widget {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            font-family: var(--font-body);
+        }
+
+        .timer-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+            margin-bottom: 12px;
+            margin-top: 4px;
+        }
+
+        .timer-display-ring {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin-bottom: 16px;
+        }
+
+        .timer-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .timer-bg-circle {
+            fill: none;
+            stroke: #e5e5e5;
+            stroke-width: 6;
+        }
+
+        .timer-progress-circle {
+            fill: none;
+            stroke: #3b82f6;
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+        }
+
+        .timer-running .timer-progress-circle {
+            stroke: #10b981;
+        }
+
+        .timer-paused .timer-progress-circle {
+            stroke: #f59e0b;
+        }
+
+        .timer-finished .timer-progress-circle {
+            stroke: #ef4444;
+            animation: pulse-red 1s ease infinite;
+        }
+
+        .timer-finished .timer-widget {
+            animation: timer-complete-glow 1s ease infinite;
+        }
+
+        .timer-finished .timer-time-text {
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        @keyframes timer-complete-glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.3));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+            }
+        }
+
+        @keyframes pulse-red {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .timer-time-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-mono);
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            letter-spacing: -1px;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .timer-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #555;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            font-size: 16px;
+        }
+
+        .timer-btn:hover {
+            background: #e5e7eb;
+            transform: scale(1.05);
+        }
+
+        .timer-btn.primary {
+            background: #3b82f6;
+            color: white;
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .timer-btn.primary:hover {
+            background: #2563eb;
+        }
+
+        .timer-presets {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .timer-preset {
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #e5e5e5;
+            background: white;
+            font-size: 11px;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .timer-preset:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .timer-preset.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .timer-status {
+            font-size: 10px;
+            color: #999;
+            margin-top: 8px;
+            text-align: center;
+            height: 14px;
+        }
+
+        .checklist-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            padding-right: 8px;
+        }
+
+        .checklist-title:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .checklist-title.editing {
+            background: white;
+            outline: 2px solid #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Checklist items */
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 4px 0;
+            cursor: pointer;
+            position: relative;
+            border-radius: 4px;
+            padding-right: 24px;
+        }
+
+        .checklist-item:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .checklist-item:hover .checklist-delete {
+            opacity: 1;
+        }
+
+        .checklist-delete {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fee2e2;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.15s;
+        }
+
+        .checklist-delete:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .checklist-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #999;
+            border-radius: 3px;
+            margin-top: 2px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .checklist-item.checked .checklist-checkbox {
+            background: #333;
+            border-color: #333;
+        }
+
+        .checklist-checkbox svg {
+            width: 10px;
+            height: 10px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .checklist-item.checked .checklist-checkbox svg {
+            opacity: 1;
+        }
+
+        .checklist-text {
+            flex: 1;
+            transition: all 0.2s;
+            cursor: text;
+            padding: 2px 4px;
+            margin: -2px -4px;
+            border-radius: 4px;
+        }
+
+        .checklist-text:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .checklist-item.editing .checklist-text {
+            background: white;
+            outline: 2px solid #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            cursor: text;
+        }
+
+        .checklist-text {
+            flex: 1;
+            transition: all 0.2s;
+            cursor: pointer;
+            padding: 2px 4px;
+            margin: -2px -4px;
+            border-radius: 4px;
+            caret-color: #3b82f6;
+        }
+
+        .checklist-item.checked .checklist-text {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .checklist-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            border-bottom: 1px dashed #ccc;
+            padding: 2px 0;
+            margin-top: 4px;
+        }
+
+        /* Quote note */
+        .note-type-quote .note-content {
+            font-style: italic;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .quote-mark {
+            font-size: 48px;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.15);
+            font-family: Georgia, serif;
+        }
+
+        .quote-text {
+            font-size: 22px;
+            line-height: 1.3;
+        }
+
+        .quote-attribution {
+            margin-top: 12px;
+            font-size: 14px;
+            opacity: 0.6;
+        }
+
+        /* ─── Controls ─── */
+        .note-controls {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 30;
+        }
+
+        .note:hover .note-controls,
+        .note.selected .note-controls {
+            opacity: 1;
+        }
+
+        .control-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+            transition: all 0.15s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            background: #f5f5f5;
+        }
+
+        .control-btn.delete:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* ─── Recycle Bin ─── */
+        .recycle-bin {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 64px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .recycle-bin:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .recycle-bin.drag-over {
+            border-color: #ef4444;
+            background: rgba(254, 226, 226, 0.95);
+            transform: scale(1.1);
+        }
+
+        .recycle-bin svg {
+            width: 28px;
+            height: 28px;
+            color: #666;
+            transition: color 0.2s;
+        }
+
+        .recycle-bin.drag-over svg {
+            color: #ef4444;
+        }
+
+        .recycle-bin-count {
+            font-size: 11px;
+            font-weight: 600;
+            color: #999;
+            min-height: 14px;
+        }
+
+        .recycle-bin.drag-over .recycle-bin-count {
+            color: #ef4444;
+        }
+
+        /* Recycle Bin Modal */
+        .bin-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bin-modal-overlay.show {
+            display: flex;
+        }
+
+        .bin-modal {
+            background: white;
+            border-radius: 16px;
+            width: 480px;
+            max-height: 70vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .bin-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bin-modal-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .bin-modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #666;
+            transition: all 0.15s;
+        }
+
+        .bin-modal-close:hover {
+            background: #e5e7eb;
+        }
+
+        .bin-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .bin-empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .bin-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: #f9fafb;
+            transition: all 0.15s;
+        }
+
+        .bin-item:hover {
+            background: #f3f4f6;
+        }
+
+        .bin-item-preview {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .bin-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bin-item-type {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .bin-item-content {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bin-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .bin-item-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .bin-item-btn.restore {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .bin-item-btn.restore:hover {
+            background: #2563eb;
+        }
+
+        .bin-item-btn.perm-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .bin-item-btn.perm-delete:hover {
+            background: #fecaca;
+        }
+
+        .bin-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bin-empty-all {
+            padding: 8px 16px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .bin-empty-all:hover {
+            background: #fecaca;
+        }
+
+        .bin-empty-btn {
+            padding: 8px 16px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .bin-empty-btn:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .board-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .board-item:hover {
+            background: #f5f5f5;
+        }
+
+        .board-item.active {
+            background: #e8f0fe;
+        }
+
+        .board-item-name {
+            font-weight: 500;
+        }
+
+        .board-item-delete {
+            color: #dc2626;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .board-item-delete:hover {
+            background: #fee2e2;
+        }
+
+        .board-switcher {
+            padding: 6px;
+        }
+
+        .board-switcher svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ─── Toolbar ─── */
+        .toolbar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 8px 16px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .toolbar.hidden {
+            transform: translateX(-50%) translateY(100px);
+        }
+
+        .tool-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #555;
+            transition: all 0.2s;
+            font-family: var(--font-body);
+        }
+
+        .tool-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #000;
+        }
+
+        .tool-btn:active {
+            transform: scale(0.95);
+        }
+
+        .tool-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .tool-btn span {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .tool-sep {
+            width: 1px;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 0 4px;
+        }
+
+        .tool-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* ─── Top Bar ─── */
+        .top-bar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 8px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: var(--font-body);
+            font-size: 14px;
+            width: 200px;
+            color: #333;
+        }
+
+        .search-box input::placeholder {
+            color: #999;
+        }
+
+        .clock-widget {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 8px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            letter-spacing: 0.5px;
+        }
+
+        .dark-mode-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        :root.dark-mode {
+            --bg-base: #1a1a2e;
+            --bg-secondary: #16213e;
+            --cork-base: #2d2d44;
+            --cork-dark: #1a1a2e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+        }
+
+        :root.dark-mode body {
+            background: var(--bg-base);
+        }
+
+        :root.dark-mode .board {
+            background: var(--bg-secondary);
+        }
+
+        :root.dark-mode .corkboard {
+            background: var(--cork-base);
+        }
+
+        :root.dark-mode .note-paper {
+            background: #2a2a3e !important;
+        }
+
+        :root.dark-mode .note-content {
+            color: var(--text-primary);
+        }
+
+        :root.dark-mode .toolbar {
+            background: rgba(30, 30, 50, 0.95);
+        }
+
+        :root.dark-mode .tool-btn {
+            background: rgba(50, 50, 80, 0.8);
+            color: var(--text-primary);
+        }
+
+        :root.dark-mode .tool-btn:hover {
+            background: rgba(70, 70, 120, 0.9);
+        }
+
+        :root.dark-mode .search-wrapper {
+            background: rgba(30, 30, 50, 0.95);
+        }
+
+        :root.dark-mode #searchInput {
+            background: rgba(50, 50, 80, 0.8);
+            color: var(--text-primary);
+            border-color: rgba(100, 100, 150, 0.3);
+        }
+
+        :root.dark-mode .bin-modal {
+            background: #2a2a3e;
+            color: var(--text-primary);
+        }
+
+        :root.dark-mode .checklist-title {
+            color: var(--text-primary);
+        }
+
+        .shortcuts-modal .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        :root.dark-mode .shortcuts-modal .shortcut-item {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .shortcuts-modal .shortcut-key {
+            font-family: var(--font-mono);
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        :root.dark-mode .shortcuts-modal .shortcut-key {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ─── Toast Notification ─── */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            z-index: 10000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ─── Empty State Hint ─── */
+        .empty-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(0, 0, 0, 0.2);
+            font-family: var(--font-hand);
+            font-size: 24px;
+            pointer-events: none;
+        }
+
+        .note-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            z-index: 50;
+        }
+
+        .note-resize-handle::before {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #bbb;
+            border-bottom: 2px solid #bbb;
+        }
+
+        .note-resize-handle:hover::before {
+            border-color: #3b82f6;
+        }
+
+        /* ─── Selection Ring ─── */
+        .note.selected .note-inner::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 2px solid #3b82f6;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .note.selected.editing .note-content {
+            outline: none;
+            caret-color: #3b82f6;
+        }
+
+        .note.selected.editing .note-inner::before {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* ─── Animations ─── */
+        @keyframes pinDrop {
+            0% {
+                transform: translateX(-50%) translateY(-30px) scale(1.5);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateX(-50%) translateY(4px) scale(0.9);
+            }
+
+            100% {
+                transform: translateX(-50%) translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .pin-animate {
+            animation: pinDrop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes noteAppear {
+            0% {
+                transform: scale(0) rotate(var(--rot));
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) rotate(var(--rot));
+                opacity: 1;
+            }
+        }
+
+        .note-new {
+            animation: noteAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            .note {
+                min-width: 120px;
+                min-height: 80px;
+            }
+
+            .note-controls {
+                opacity: 1;
+            }
+
+            .control-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+
+            .checklist-checkbox {
+                width: 24px;
+                height: 24px;
+            }
+
+            .checklist-delete {
+                opacity: 1;
+                width: 24px;
+                height: 24px;
+                font-size: 14px;
+            }
+
+            .note-resize-handle {
+                width: 24px;
+                height: 24px;
+            }
+
+            .note-resize-handle::before {
+                bottom: 6px;
+                right: 6px;
+                width: 10px;
+                height: 10px;
+            }
+
+            .recycle-bin {
+                width: 80px;
+                height: 100px;
+                bottom: 60px;
+            }
+
+            .toolbar {
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .tool-btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .tool-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        .note.search-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 480px) {
+            .board {
+                padding: 40px 10px 10px 10px;
+            }
+
+            .note {
+                width: 140px !important;
+                min-height: 100px !important;
+            }
+
+            .note-type-reminder {
+                width: 160px !important;
+            }
+
+            .note-type-timer {
+                width: 180px !important;
+            }
+
+            .tool-btn {
+                padding: 6px 8px;
+            }
+
+            .tool-btn span {
+                display: none;
+            }
+
+            .recycle-bin {
+                bottom: 90px;
+                right: 12px;
+                width: 52px;
+                height: 64px;
+            }
+
+            .recycle-bin svg {
+                width: 22px;
+                height: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search (/)...">
+            <button class="tool-btn board-switcher" onclick="openBoardModal()" title="Switch Board">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                </svg>
+            </button>
+            <button class="tool-btn dark-mode-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
+        <div class="clock-widget" id="clock">00:00</div>
+    </div>
+
+    <!-- Board -->
+    <div class="board-wrapper">
+        <div class="corkboard" id="board">
+            <div class="empty-hint" id="emptyHint">Tap + to add your first note</div>
+        </div>
+    </div>
+
+    <!-- Recycle Bin -->
+    <div class="recycle-bin" id="recycleBin" onclick="openBinModal()" title="Recycle Bin — Click to view deleted items">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+        <span class="recycle-bin-count" id="binCount"></span>
+    </div>
+
+    <!-- Recycle Bin Modal -->
+    <div class="bin-modal-overlay" id="binModalOverlay" onclick="closeBinModal(event)">
+        <div class="bin-modal" onclick="event.stopPropagation()">
+            <div class="bin-modal-header">
+                <h2>Recycle Bin</h2>
+                <button class="close-btn" onclick="closeBinModal()">×</button>
+            </div>
+            <div class="bin-modal-body" id="binModalBody"></div>
+            <div class="bin-modal-footer">
+                <span id="binTotal">0 items</span>
+                <button id="binEmptyBtn" class="bin-empty-btn" onclick="emptyBin()">Empty Bin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Board Switcher Modal -->
+    <div class="bin-modal-overlay" id="boardModalOverlay" onclick="closeBoardModal(event)">
+        <div class="bin-modal" onclick="event.stopPropagation()">
+            <div class="bin-modal-header">
+                <h2>Switch Board</h2>
+                <button class="close-btn" onclick="closeBoardModal()">×</button>
+            </div>
+            <div class="bin-modal-body" id="boardModalBody"></div>
+            <div class="bin-modal-footer">
+                <button class="bin-empty-btn" onclick="createNewBoard()">+ New Board</button>
+            </div>
+        </div>
+    </div>
+    <div class="bin-modal-body" id="binModalBody">
+        <div class="bin-empty">No deleted items</div>
+    </div>
+    <div class="bin-modal-footer">
+        <span class="bin-total" id="binTotal">0 items</span>
+        <button class="bin-empty-all" onclick="emptyBin()" id="binEmptyBtn" style="display:none">Empty
+            Bin</button>
+    </div>
+    </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" id="toolbar">
+        <button class="tool-btn" onclick="addNote('sticky')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+            <span>Sticky</span>
+        </button>
+        <button class="tool-btn" onclick="addNote('paper')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span>Paper</span>
+        </button>
+        <button class="tool-btn" onclick="addNote('checklist')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            <span>Tasks</span>
+        </button>
+        <button class="tool-btn" onclick="addNote('timer')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>Timer</span>
+        </button>
+        <button class="tool-btn" onclick="addNote('reminder')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                <path d="M12 6v6l4 2" />
+            </svg>
+            <span>Reminder</span>
+        </button>
+        <button class="tool-btn" onclick="addNote('quote')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path
+                    d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+                <path
+                    d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
+            </svg>
+            <span>Quote</span>
+        </button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="document.getElementById('photoInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+            </svg>
+            <span>Photo</span>
+        </button>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="scatterNotes()" title="Scatter all notes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+                <path
+                    d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+                <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+                <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+            </svg>
+            <span>Scatter</span>
+        </button>
+        <button class="tool-btn" onclick="exportBoard()" title="Export as image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Export</span>
+        </button>
+        <button class="tool-btn" onclick="clearAll()" title="Clear board">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span>Clear</span>
+        </button>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Module Scripts -->
+    <script src="js/state.js"></script>
+    <script src="js/dom.js"></script>
+    <script src="js/ui-utils.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/clock.js"></script>
+    <script src="js/timers.js"></script>
+    <script src="js/reminders.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/recycle-bin.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/notes.js"></script>
+    <script src="js/drag.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/tests.js"></script>
+    <script>
+        initApp();
+
+        document.addEventListener('change', e => {
+            if (e.target.id?.startsWith('reminder-interval-')) {
+                const noteId = e.target.id.replace('reminder-interval-', '');
+                const customInput = document.getElementById(`reminder-custom-${noteId}`);
+                if (customInput) {
+                    customInput.classList.toggle('visible', e.target.value === 'custom');
+                    if (e.target.value === 'custom') customInput.focus();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

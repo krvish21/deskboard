@@ -1,0 +1,12 @@
+{
+  "name": "deskboard",
+  "version": "1.0.0",
+  "description": "Personal productivity desk dashboard",
+  "scripts": {
+    "build": "node build.js",
+    "start": "npx serve ."
+  },
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
