@@ -18,6 +18,7 @@
         rel="stylesheet">
     <style>
         :root {
+            /* Board colors */
             --cork-base: #c4a882;
             --cork-dark: #8b7355;
             --frame-color: #5c4033;
@@ -26,11 +27,31 @@
             --pin-red: #dc2626;
             --pin-blue: #2563eb;
             --pin-green: #16a34a;
+            
+            /* Shadows */
             --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.15);
             --shadow-lift: 0 12px 40px rgba(0, 0, 0, 0.25);
+            
+            /* Fonts */
             --font-hand: 'Caveat', cursive;
             --font-body: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
+            
+            /* Note sizes */
+            --note-width: 240px;
+            --note-height: 240px;
+            --note-min-width: 120px;
+            --note-min-height: 80px;
+            
+            /* Timer sizes */
+            --timer-width: 260px;
+            --timer-height: 320px;
+            
+            /* Reminder sizes */
+            --reminder-width: 240px;
+            --reminder-min-height: 180px;
+            
+            /* Other */
             --blink-color: #ef4444;
         }
 
@@ -50,41 +71,86 @@
             user-select: none;
         }
 
-        /* ─── Board Container ─── */
+/* ─── Board Container ─── */
         .board-wrapper {
             position: fixed;
             inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
             background: radial-gradient(ellipse at center, #2a2a2a 0%, #111 100%);
+            padding: 0;
         }
 
+        /* Board fills entire container */
         .corkboard {
             position: relative;
             width: 100%;
             height: 100%;
-            max-width: 95vw;
-            max-height: 90vh;
             background:
                 radial-gradient(circle at 20% 50%, rgba(139, 90, 43, 0.08) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(160, 82, 45, 0.06) 0%, transparent 50%),
                 radial-gradient(circle at 40% 20%, rgba(139, 90, 43, 0.05) 0%, transparent 40%),
                 linear-gradient(135deg, #c9b08a 0%, #b8a07a 50%, #c4a882 100%);
-            border-radius: 4px;
-            box-shadow:
-                inset 0 0 80px rgba(101, 67, 33, 0.15),
-                0 0 0 12px var(--frame-color),
-                0 0 0 14px var(--frame-dark),
-                0 20px 60px rgba(0, 0, 0, 0.5),
-                0 0 0 16px rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 0 80px rgba(101, 67, 33, 0.15);
             overflow: hidden;
             cursor: grab;
         }
 
         .corkboard:active {
             cursor: grabbing;
+        }
+
+        /* Cork texture overlay */
+        .corkboard::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.4;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            mix-blend-mode: multiply;
+        }
+
+        /* Wood texture */
+        .corkboard.board-wood {
+            background: linear-gradient(135deg, #8b6914 0%, #a0522d 30%, #6b4423 70%, #8b4513 100%);
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.2);
+        }
+        .corkboard.board-wood::before {
+            opacity: 0.25;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05 0.005' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            mix-blend-mode: overlay;
+        }
+        .corkboard.board-wood::after {
+            opacity: 0.08;
+            background: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0, 0, 0, 0.15) 3px, rgba(0, 0, 0, 0.1) 6px);
+        }
+
+        /* Fabric texture */
+        .corkboard.board-fabric {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 50%, #1a202c 100%);
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.3);
+        }
+        .corkboard.board-fabric::before {
+            opacity: 0.15;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            mix-blend-mode: soft-light;
+        }
+        .corkboard.board-fabric::after {
+            opacity: 0.05;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px);
+        }
+
+        /* Whiteboard texture */
+        .corkboard.board-whiteboard {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #bbf7d0 100%);
+            box-shadow: inset 0 0 60px rgba(34, 197, 94, 0.1);
+        }
+        .corkboard.board-whiteboard::before {
+            opacity: 0.1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            mix-blend-mode: multiply;
+        }
+        .corkboard.board-whiteboard::after {
+            display: none;
         }
 
         /* Cork texture overlay */
@@ -245,8 +311,8 @@
 
         /* Timer note specific */
         .note-type-timer {
-            width: 260px !important;
-            height: 320px !important;
+            width: var(--timer-width) !important;
+            height: var(--timer-height) !important;
         }
 
         .note-type-timer .note-paper {
@@ -260,8 +326,8 @@
 
         /* Reminder note specific */
         .note-type-reminder {
-            width: 240px !important;
-            min-height: 180px !important;
+            width: var(--reminder-width) !important;
+            min-height: var(--reminder-min-height) !important;
             height: auto !important;
         }
 
@@ -1452,6 +1518,23 @@
             background: var(--cork-base);
         }
 
+        :root.dark-mode .corkboard.board-cork {
+            background:
+                radial-gradient(circle at 20% 50%, rgba(139, 90, 43, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #2d2d44 0%, #1a1a2e 50%, #2d2d44 100%);
+        }
+
+        :root.dark-mode .corkboard.board-whiteboard {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+            box-shadow:
+                inset 0 0 60px rgba(34, 197, 94, 0.05),
+                0 0 0 12px #166534,
+                0 0 0 14px #14532d,
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 16px rgba(0, 0, 0, 0.1);
+        }
+
         :root.dark-mode .note-paper {
             background: #1e1e2e !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.1);
@@ -1660,8 +1743,8 @@
         /* ─── Responsive ─── */
         @media (max-width: 768px) {
             .note {
-                min-width: 120px;
-                min-height: 80px;
+                min-width: var(--note-min-width);
+                min-height: var(--note-min-height);
             }
 
             .note-controls {
@@ -1790,6 +1873,13 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+            <button class="tool-btn" onclick="cycleBoardTexture()" title="Change Board Texture">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M3 9h18" />
+                    <path d="M9 3v18" />
                 </svg>
             </button>
         </div>

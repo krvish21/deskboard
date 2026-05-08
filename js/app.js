@@ -289,6 +289,8 @@ function initApp() {
         applyDarkMode(true);
     }
 
+    applyBoardTexture(getBoardTexture());
+
     if (notes.length <= 5) {
         setTimeout(() => showToast('N=sticky, T=timer, R=reminder'), 1500);
     }

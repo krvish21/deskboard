@@ -51,6 +51,29 @@ function redo() {
     return true;
 }
 
+// ─── Board Texture ───
+function getBoardTexture() {
+    return localStorage.getItem('deskboard-texture') || 'cork';
+}
+
+function cycleBoardTexture() {
+    const textures = ['cork', 'wood', 'fabric', 'whiteboard'];
+    const current = getBoardTexture();
+    const idx = textures.indexOf(current);
+    const next = textures[(idx + 1) % textures.length];
+    localStorage.setItem('deskboard-texture', next);
+    applyBoardTexture(next);
+    const names = { cork: 'Cork', wood: 'Wood', fabric: 'Fabric', whiteboard: 'Whiteboard' };
+    showToast(`Board: ${names[next]}`);
+}
+
+function applyBoardTexture(texture) {
+    const board = document.getElementById('board');
+    if (board) {
+        board.className = 'corkboard board-' + texture;
+    }
+}
+
 // ─── Dark Mode ───
 function isDarkMode() {
     return localStorage.getItem('deskboard-darkmode') === 'true';

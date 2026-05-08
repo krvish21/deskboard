@@ -6,13 +6,6 @@ function shouldBlockDrag(noteType, target) {
     if (target.closest('.note-resize-handle')) return true;
     if (target.isContentEditable) return true;
     if (target.tagName === 'INPUT' || target.tagName === 'SELECT') return true;
-    if (target.tagName === 'BUTTON') return true;
-    
-    if (noteType === 'reminder') {
-        if (target.closest('.reminder-config') || target.closest('.reminder-display')) {
-            return true;
-        }
-    }
     
     if (noteType === 'timer' && target.closest('.timer-widget')) {
         return true;
@@ -21,8 +14,6 @@ function shouldBlockDrag(noteType, target) {
     if (noteType === 'checklist' && target.closest('.checklist-container')) {
         return true;
     }
-    
-    if (noteType === 'photo') return true;
     
     return false;
 }
