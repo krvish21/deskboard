@@ -75,7 +75,7 @@ function createNoteElement(note) {
                     <label>What to remind?</label>
                     <input type="text" id="reminder-title-${note.id}" placeholder="e.g. Drink Water">
                     <label>Every how often?</label>
-                    <select id="reminder-interval-${note.id}">
+                    <select id="reminder-interval-${note.id}" onchange="handleReminderIntervalChange(this, '${note.id}')">
                         <option value="5">Every 5 minutes</option>
                         <option value="10">Every 10 minutes</option>
                         <option value="15">Every 15 minutes</option>
@@ -111,7 +111,7 @@ function createNoteElement(note) {
                     <div class="reminder-next">Next in ~${nextIn} min</div>
                     <div class="reminder-icon">${state.isBlinking ? '🔔' : '⏰'}</div>
                     ${state.isBlinking
-                        ? `<button class="reminder-ack" data-note-id="${note.id}" role="button" aria-label="Acknowledge ${escapeHtml(state.title)}">Acknowledge ✓</button>`
+                        ? `<button class="reminder-ack" onclick="acknowledgeReminder('${note.id}')" role="button" aria-label="Acknowledge ${escapeHtml(state.title)}">Acknowledge ✓</button>`
                         : `<div class="reminder-interval" aria-live="polite">Every ${state.intervalMinutes} min</div>`
                     }
                     ${historyHTML}

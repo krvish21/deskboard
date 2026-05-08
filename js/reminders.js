@@ -113,14 +113,21 @@ function checkReminders() {
     });
 }
 
-document.addEventListener('click', e => {
-    const btn = e.target.closest('.reminder-ack');
-    if (btn) {
-        const noteId = btn.dataset.noteId;
-        if (noteId) {
-            e.preventDefault();
-            e.stopPropagation();
-            acknowledgeReminder(noteId);
-        }
+document.addEventListener('change', e => {
+    if (e.target.id && e.target.id.startsWith('reminder-interval-')) {
+        const noteId = e.target.id.replace('reminder-interval-', '');
+        handleReminderIntervalChange(e.target, noteId);
     }
 });
+
+function handleReminderIntervalChange(selectEl, noteId) {
+    const customInput = document.getElementById(`reminder-custom-${noteId}`);
+    if (customInput) {
+        if (selectEl.value === 'custom') {
+            customInput.style.setProperty('display', 'block', 'important');
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+        }
+    }
+}

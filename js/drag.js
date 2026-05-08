@@ -1,6 +1,4 @@
 // ─── Interaction Constants ───
-const DRAG_INTERACTION_AREA = 'drag-area';
-const DRAG_BLOCKED_ZONE = 'drag-blocked';
 const RESIZE_HANDLE = 'resize-handle';
 
 function shouldBlockDrag(noteType, target) {
@@ -43,14 +41,14 @@ function startDrag(e, id) {
     const note = notes.find(n => n.id === id);
     if (!note) return;
     
-    if (shouldBlockDrag(note.type, mockEvent.target)) return;
-    
     if (note.type === 'reminder' && note.reminderState?.isBlinking) {
         e.preventDefault();
         e.stopPropagation();
         acknowledgeReminder(id);
         return;
     }
+    
+    if (shouldBlockDrag(note.type, mockEvent.target)) return;
 
     e.preventDefault();
     
