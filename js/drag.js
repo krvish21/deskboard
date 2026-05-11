@@ -5,6 +5,7 @@ let rotateState = null;
 function shouldBlockDrag(noteType, target) {
     if (target.closest('.note-controls') || target.closest('.pin')) return true;
     if (target.closest('.note-resize-handle')) return true;
+    if (target.closest('.note-rotate-handle')) return true;
     if (target.isContentEditable) return true;
     if (target.tagName === 'INPUT' || target.tagName === 'SELECT') return true;
     
@@ -332,22 +333,19 @@ function startRotate(e) {
     const el = document.getElementById(noteId);
     if (!el) return;
 
-    el.classList.add('rotating');
-
     const coords = getEventCoords(e);
-    const rect = getBoardRect();
     const centerX = note.x + note.width / 2;
     const centerY = note.y + note.height / 2;
 
     rotateState = {
         id: noteId,
-        startMouseX: coords.clientX,
-        startMouseY: coords.clientY,
-        startRotation: note.rotation,
         el,
         note,
         centerX,
-        centerY
+        centerY,
+        startX: coords.clientX,
+        startY: coords.clientY,
+        hasMoved: false
     };
 
     if (e.touches) {
@@ -362,9 +360,18 @@ function startRotate(e) {
 function onRotateMove(e) {
     if (!rotateState) return;
 
-    const dx = e.clientX - rotateState.centerX;
-    const dy = e.clientY - rotateState.centerY;
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    const dx = e.clientX - rotateState.startX;
+    const dy = e.clientY - rotateState.startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 5 && !rotateState.hasMoved) return;
+
+    rotateState.hasMoved = true;
+    rotateState.el.classList.add('rotating');
+
+    const dx2 = e.clientX - rotateState.centerX;
+    const dy2 = e.clientY - rotateState.centerY;
+    const angle = Math.atan2(dy2, dx2) * (180 / Math.PI) + 90;
 
     rotateState.el.style.transform = `rotate(${angle}deg)`;
 }
@@ -372,16 +379,18 @@ function onRotateMove(e) {
 function onRotateEnd(e) {
     if (!rotateState) return;
 
-    const dx = e.clientX - rotateState.centerX;
-    const dy = e.clientY - rotateState.centerY;
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (rotateState.hasMoved) {
+        const dx = e.clientX - rotateState.centerX;
+        const dy = e.clientY - rotateState.centerY;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
 
-    rotateState.note.rotation = angle;
-    rotateState.el.style.transform = `rotate(${angle}deg)`;
-    rotateState.el.style.setProperty('--rot', `${angle}deg`);
+        rotateState.note.rotation = angle;
+        rotateState.el.style.transform = `rotate(${angle}deg)`;
+        rotateState.el.style.setProperty('--rot', `${angle}deg`);
+        saveToStorage();
+    }
+
     rotateState.el.classList.remove('rotating');
-
-    saveToStorage();
     cleanupRotateListeners();
     rotateState = null;
 }
@@ -390,9 +399,18 @@ function onTouchRotateMove(e) {
     if (!rotateState || !e.touches || e.touches.length === 0) return;
     e.preventDefault();
 
-    const dx = e.touches[0].clientX - rotateState.centerX;
-    const dy = e.touches[0].clientY - rotateState.centerY;
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    const dx = e.touches[0].clientX - rotateState.startX;
+    const dy = e.touches[0].clientY - rotateState.startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 5 && !rotateState.hasMoved) return;
+
+    rotateState.hasMoved = true;
+    rotateState.el.classList.add('rotating');
+
+    const dx2 = e.touches[0].clientX - rotateState.centerX;
+    const dy2 = e.touches[0].clientY - rotateState.centerY;
+    const angle = Math.atan2(dy2, dx2) * (180 / Math.PI) + 90;
 
     rotateState.el.style.transform = `rotate(${angle}deg)`;
 }
@@ -400,11 +418,8 @@ function onTouchRotateMove(e) {
 function onTouchRotateEnd() {
     if (!rotateState) return;
 
-    rotateState.note.rotation = rotateState.note.rotation;
-    rotateState.el.style.setProperty('--rot', `${rotateState.note.rotation}deg`);
     rotateState.el.classList.remove('rotating');
-
-    saveToStorage();
+    if (rotateState.hasMoved) saveToStorage();
     cleanupRotateListeners();
     rotateState = null;
 }

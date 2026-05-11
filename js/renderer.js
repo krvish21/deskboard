@@ -157,6 +157,8 @@ function createNoteElement(note) {
                 ? '<div class="tape"></div>'
                 : '';
 
+    const showEdit = note.type !== 'photo' && note.type !== 'timer' && note.type !== 'reminder' && note.type !== 'checklist';
+
     el.innerHTML = `
         <div class="note-inner">
             ${tapeHTML}
@@ -164,7 +166,7 @@ function createNoteElement(note) {
             <div class="note-paper" style="background-color: ${note.color || '#fff'};"></div>
             ${contentHTML}
             <div class="note-controls">
-                <button class="control-btn" onclick="startEdit('${note.id}', event); event.stopPropagation();" title="Edit">✎</button>
+                ${showEdit ? `<button class="control-btn" onclick="startEdit('${note.id}', event); event.stopPropagation();" title="Edit">✎</button>` : ''}
                 <button class="control-btn delete" onclick="deleteNote('${note.id}', event)" title="Delete">×</button>
             </div>
             <div class="note-rotate-handle" data-note-id="${note.id}"></div>
@@ -172,8 +174,12 @@ function createNoteElement(note) {
         </div>
     `;
 
-    el.addEventListener('mousedown', e => startDrag(e, note.id));
+    el.addEventListener('mousedown', e => {
+        if (e.target.closest('.note-rotate-handle')) return;
+        startDrag(e, note.id);
+    });
     el.addEventListener('touchstart', e => {
+        if (e.target.closest('.note-rotate-handle')) return;
         if (e.touches && e.touches.length === 1) {
             startDrag(e, note.id);
         }
@@ -199,17 +205,12 @@ function createNoteElement(note) {
         }, { passive: false });
     }
 
-    if (note.type !== 'photo' && note.type !== 'timer' && note.type !== 'reminder') {
-        const contentDiv = el.querySelector('.note-content, .checklist-container');
+    if (note.type === 'sticky' || note.type === 'paper' || note.type === 'quote') {
+        const contentDiv = el.querySelector('.note-content');
         if (contentDiv) {
             contentDiv.addEventListener('dblclick', e => {
                 e.stopPropagation();
-                if (note.type === 'checklist') {
-                    const titleDiv = el.querySelector('.note-content');
-                    if (titleDiv) startEdit(note.id, e);
-                } else {
-                    startEdit(note.id, e);
-                }
+                startEdit(note.id, e);
             });
         }
     }
