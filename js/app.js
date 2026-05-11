@@ -157,7 +157,7 @@ const SHORTCUTS = [
     { key: 'Enter', desc: 'Acknowledge reminder' },
     { key: 'Delete', desc: 'Delete selected note' },
     { key: 'Escape', desc: 'Deselect / close modal' },
-{ key: 'Ctrl+Z', desc: 'Undo' },
+    { key: 'Ctrl+Z', desc: 'Undo' },
     { key: 'Ctrl+Shift+Z / Y', desc: 'Redo' },
     { key: 'Ctrl+?', desc: 'Show shortcuts' }
 ];

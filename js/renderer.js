@@ -167,6 +167,7 @@ function createNoteElement(note) {
                 <button class="control-btn" onclick="startEdit('${note.id}', event); event.stopPropagation();" title="Edit">✎</button>
                 <button class="control-btn delete" onclick="deleteNote('${note.id}', event)" title="Delete">×</button>
             </div>
+            <div class="note-rotate-handle" data-note-id="${note.id}"></div>
             <div class="note-resize-handle" data-note-id="${note.id}"></div>
         </div>
     `;
@@ -184,6 +185,16 @@ function createNoteElement(note) {
         resizeHandle.addEventListener('touchstart', e => {
             if (e.touches && e.touches.length === 1) {
                 startResize(e);
+            }
+        }, { passive: false });
+    }
+
+    const rotateHandle = el.querySelector('.note-rotate-handle');
+    if (rotateHandle) {
+        rotateHandle.addEventListener('mousedown', e => startRotate(e));
+        rotateHandle.addEventListener('touchstart', e => {
+            if (e.touches && e.touches.length === 1) {
+                startRotate(e);
             }
         }, { passive: false });
     }

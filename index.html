@@ -1668,6 +1668,46 @@
             border-color: #3b82f6;
         }
 
+        .note-rotate-handle {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            width: 20px;
+            height: 20px;
+            cursor: grab;
+            z-index: 50;
+            background: rgba(79, 70, 229, 0.1);
+            border: 2px solid rgba(79, 70, 229, 0.4);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .note:hover .note-rotate-handle,
+        .note.selected .note-rotate-handle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .note-rotate-handle::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-left: 2px solid #4f46e5;
+            border-bottom: 2px solid #4f46e5;
+            transform: rotate(45deg);
+            margin-left: 2px;
+        }
+
+        .note-rotate-handle:hover {
+            background: rgba(79, 70, 229, 0.2);
+            border-color: #4f46e5;
+        }
+
+        .note.rotating {
+            cursor: grabbing;
+        }
+
         /* ─── Selection Ring ─── */
         .note.selected .note-inner::before {
             content: '';

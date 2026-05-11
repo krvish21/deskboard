@@ -1,5 +1,6 @@
 // ─── Interaction Constants ───
 const RESIZE_HANDLE = 'resize-handle';
+let rotateState = null;
 
 function shouldBlockDrag(noteType, target) {
     if (target.closest('.note-controls') || target.closest('.pin')) return true;
@@ -315,4 +316,102 @@ function cleanupResizeListeners() {
     document.removeEventListener('mouseup', onResizeEnd);
     document.removeEventListener('touchmove', onTouchResizeMove);
     document.removeEventListener('touchend', onTouchResizeEnd);
+}
+
+function startRotate(e) {
+    const handle = e.target.closest('.note-rotate-handle');
+    if (!handle) return;
+
+    const noteId = handle.dataset.noteId;
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const el = document.getElementById(noteId);
+    if (!el) return;
+
+    el.classList.add('rotating');
+
+    const coords = getEventCoords(e);
+    const rect = getBoardRect();
+    const centerX = note.x + note.width / 2;
+    const centerY = note.y + note.height / 2;
+
+    rotateState = {
+        id: noteId,
+        startMouseX: coords.clientX,
+        startMouseY: coords.clientY,
+        startRotation: note.rotation,
+        el,
+        note,
+        centerX,
+        centerY
+    };
+
+    if (e.touches) {
+        document.addEventListener('touchmove', onTouchRotateMove, { passive: false });
+        document.addEventListener('touchend', onTouchRotateEnd);
+    } else {
+        document.addEventListener('mousemove', onRotateMove);
+        document.addEventListener('mouseup', onRotateEnd);
+    }
+}
+
+function onRotateMove(e) {
+    if (!rotateState) return;
+
+    const dx = e.clientX - rotateState.centerX;
+    const dy = e.clientY - rotateState.centerY;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+
+    rotateState.el.style.transform = `rotate(${angle}deg)`;
+}
+
+function onRotateEnd(e) {
+    if (!rotateState) return;
+
+    const dx = e.clientX - rotateState.centerX;
+    const dy = e.clientY - rotateState.centerY;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+
+    rotateState.note.rotation = angle;
+    rotateState.el.style.transform = `rotate(${angle}deg)`;
+    rotateState.el.style.setProperty('--rot', `${angle}deg`);
+    rotateState.el.classList.remove('rotating');
+
+    saveToStorage();
+    cleanupRotateListeners();
+    rotateState = null;
+}
+
+function onTouchRotateMove(e) {
+    if (!rotateState || !e.touches || e.touches.length === 0) return;
+    e.preventDefault();
+
+    const dx = e.touches[0].clientX - rotateState.centerX;
+    const dy = e.touches[0].clientY - rotateState.centerY;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+
+    rotateState.el.style.transform = `rotate(${angle}deg)`;
+}
+
+function onTouchRotateEnd() {
+    if (!rotateState) return;
+
+    rotateState.note.rotation = rotateState.note.rotation;
+    rotateState.el.style.setProperty('--rot', `${rotateState.note.rotation}deg`);
+    rotateState.el.classList.remove('rotating');
+
+    saveToStorage();
+    cleanupRotateListeners();
+    rotateState = null;
+}
+
+function cleanupRotateListeners() {
+    document.removeEventListener('mousemove', onRotateMove);
+    document.removeEventListener('mouseup', onRotateEnd);
+    document.removeEventListener('touchmove', onTouchRotateMove);
+    document.removeEventListener('touchend', onTouchRotateEnd);
 }
